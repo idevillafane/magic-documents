@@ -1,0 +1,31 @@
+# .gitignore para proyecto Rust/Cargo
+
+# Compilación
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+# Cargo.lock  # ← Comentado: mantener en git para binarios
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup
+*.bak
+*~
+
+# Claude workspace (no subir configuración local)
+.iggy/
+
+# Archivos de prueba con datos personales
+src/bin/test_*.rs

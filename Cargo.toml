@@ -1,0 +1,28 @@
+[package]
+name = "mad"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mad"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+toml = "0.7"
+chrono = { version = "0.4", features = ["alloc","serde"] }
+dialoguer = { version = "0.10", features = ["fuzzy-select"] }
+directories = "4.0"
+dirs = "5.0"
+slug = "0.1"
+anyhow = "1.0.100"
+ratatui = "0.29"
+tui-textarea = { version = "0.7", features = ["search"] }
+crossterm = "0.28"
+console = "0.15"
+
+[dev-dependencies]
+tempfile = "3.8"
