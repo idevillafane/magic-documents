@@ -24,7 +24,7 @@ pub struct Config {
     /// Mapeo de directorios trabajo -> documentación (paths relativos a tag_root)
     /// Ejemplo: "/Users/usuario/Developer" = "developer"
     #[serde(default)]
-    pub dir_mappings: HashMap<String, String>,
+    pub dir_mappings: Option<HashMap<String, String>>,
 }
 
 fn default_notes_dir() -> String {

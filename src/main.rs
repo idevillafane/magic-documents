@@ -91,6 +91,10 @@ fn main() -> anyhow::Result<()> {
             let (config, vault) = load_config()?;
             commands::migrate::run(&vault, &config)?;
         }
+        ValidatedArgs::Rename { new_name, no_retag } => {
+            let (config, _vault) = load_config()?;
+            commands::rename::run(&config, &new_name, no_retag)?;
+        }
     }
 
     Ok(())

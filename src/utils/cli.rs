@@ -20,6 +20,7 @@ use std::path::PathBuf;
     mad --retag .               Re-tag recursivo en dir actual\n  \
     mad --redir file.md         Mover archivo según su tag\n  \
     mad --redir .               Mover todos según sus tags\n  \
+    mad -r nuevo-nombre         Renombrar directorios (ambos lados) y ejecutar retag\n  \
     mad --migrate               Convertir tags [a,b] a [a/b] en todo el vault"
 )]
 pub struct Args {
@@ -84,6 +85,10 @@ pub struct Args {
     #[arg(long = "no-alias")]
     pub no_alias: bool,
 
+    /// No ejecutar retag automáticamente al usar --rename
+    #[arg(long = "no-retag")]
+    pub no_retag: bool,
+
     /// Crear/abrir nota en Obsidian desde directorio productivo
     #[arg(short = 'o', long = "obsidian", value_name = "TÍTULO", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir", "migrate", "quick"])]
     pub obsidian: Option<String>,
@@ -93,8 +98,12 @@ pub struct Args {
     pub quick: Option<String>,
 
     /// Migración única: convertir tags array a formato slash
-    #[arg(long = "migrate", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir"])]
+    #[arg(long = "migrate", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir", "rename"])]
     pub migrate: bool,
+
+    /// Renombrar directorio asociado (productivo ↔ vault)
+    #[arg(short = 'r', long = "rename", value_name = "NUEVO_NOMBRE", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir", "migrate", "obsidian", "quick"])]
+    pub rename: Option<String>,
 
     /// Título de la nota (argumento posicional)
     #[arg(value_name = "TÍTULO")]
@@ -121,6 +130,14 @@ impl Args {
         // Handle --migrate
         if self.migrate {
             return Ok(ValidatedArgs::Migrate);
+        }
+
+        // Handle --rename
+        if let Some(new_name) = self.rename {
+            return Ok(ValidatedArgs::Rename {
+                new_name,
+                no_retag: self.no_retag,
+            });
         }
 
         // Handle --obsidian or --quick (aliases)
@@ -298,4 +315,8 @@ pub enum ValidatedArgs {
         skip_timestamp: bool,
     },
     Migrate,
+    Rename {
+        new_name: String,
+        no_retag: bool,
+    },
 }

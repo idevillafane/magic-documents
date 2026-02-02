@@ -5,7 +5,7 @@ use crate::utils::vault::VaultWalker;
 use chrono::Local;
 use serde_yaml::Value;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Re-tag files based on their directory location
 /// - `md --retag file.md` - retag single file

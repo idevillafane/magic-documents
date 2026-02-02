@@ -94,7 +94,16 @@ fn find_matching_mapping(
     current_canonical: &Path,
     config: &Config,
 ) -> anyhow::Result<(PathBuf, String)> {
-    if config.dir_mappings.is_empty() {
+    let dir_mappings = config.dir_mappings.as_ref().ok_or_else(|| {
+        anyhow::anyhow!(
+            "No hay mapeos de directorios configurados en dir_mappings.\n\
+            Agrega mapeos en ~/.config/magic-documents/config.toml:\n\
+            [dir_mappings]\n\
+            \"/ruta/trabajo\" = \"documentacion\""
+        )
+    })?;
+
+    if dir_mappings.is_empty() {
         anyhow::bail!(
             "No hay mapeos de directorios configurados en dir_mappings.\n\
             Agrega mapeos en ~/.config/magic-documents/config.toml:\n\
@@ -107,7 +116,7 @@ fn find_matching_mapping(
     let mut best_match: Option<(PathBuf, String)> = None;
     let mut best_match_len = 0;
 
-    for (work_dir, doc_path) in &config.dir_mappings {
+    for (work_dir, doc_path) in dir_mappings {
         let work_path = PathBuf::from(work_dir);
 
         // Try to canonicalize, skip if it doesn't exist
@@ -134,7 +143,7 @@ fn find_matching_mapping(
                 Directorio actual: {}\n\
                 Mapeos disponibles: {:?}",
                 current_canonical.display(),
-                config.dir_mappings.keys()
+                dir_mappings.keys()
             )
         }
     }

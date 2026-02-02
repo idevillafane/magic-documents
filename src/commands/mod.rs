@@ -5,5 +5,6 @@ pub mod migrate;
 pub mod obsidian;
 pub mod recent;
 pub mod redir;
+pub mod rename;
 pub mod retag;
 pub mod tman;
