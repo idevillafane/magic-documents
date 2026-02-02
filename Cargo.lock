@@ -590,7 +590,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "md"
+name = "mad"
 version = "0.1.0"
 dependencies = [
  "anyhow",

@@ -211,11 +211,8 @@ impl NoteBuilder {
         // Render and build frontmatter
         let mut rendered_map = frontmatter::render(frontmatter_map, &vars);
 
-        // Add tags as slash-separated string: ["padre/hijo/nieto"]
-        if !selected_tag.is_empty() {
-            let tags_value = Value::Sequence(vec![Value::String(selected_tag)]);
-            rendered_map.insert(Value::String("tags".to_string()), tags_value);
-        }
+        // NOTE: Primary tag is NOT added to frontmatter.tags anymore
+        // It will be in the body as first line: { #tag/path }
 
         // Add aliases
         if !selected_aliases.is_empty() {
@@ -231,8 +228,16 @@ impl NoteBuilder {
         // Render body
         let rendered_body = template::render_body(&body, &vars);
 
+        // Prepend primary tag to body as first line: { #tag/path }
+        // Format: { #tag }\n\n{content}
+        let body_with_tag = if !selected_tag.is_empty() {
+            format!("{{ #{} }}\n\n{}", selected_tag, rendered_body.trim_start())
+        } else {
+            rendered_body
+        };
+
         // Write file
-        file::write_note(target_file, &rendered_map, &rendered_body)?;
+        file::write_note(target_file, &rendered_map, &body_with_tag)?;
 
         // Open editor
         self.open_editor_new_file(target_file)

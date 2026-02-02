@@ -67,9 +67,9 @@ fn main() -> anyhow::Result<()> {
             let editor_cmd = resolve_editor(&config, editor);
             commands::create::run(config, vault, title, target_dir, editor_cmd)?;
         }
-        ValidatedArgs::Retag { target, no_backup } => {
+        ValidatedArgs::Retag { target, no_backup, no_alias } => {
             let (config, vault) = load_config()?;
-            commands::retag::run(&vault, &config, &target, no_backup)?;
+            commands::retag::run(&vault, &config, &target, no_backup, no_alias)?;
         }
         ValidatedArgs::Redir { target, no_backup } => {
             let (config, vault) = load_config()?;

@@ -2,6 +2,7 @@ use crate::core::config::Config;
 use crate::core::frontmatter;
 use crate::tags::TagPath;
 use crate::utils::vault::VaultWalker;
+use chrono::Local;
 use dialoguer::{theme::ColorfulTheme, Select};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -86,34 +87,42 @@ fn redir_file(vault: &Path, config: &Config, path: &Path, no_backup: bool) -> an
 
 fn redir_file_inner(vault: &Path, config: &Config, path: &Path, no_backup: bool) -> anyhow::Result<Option<PathBuf>> {
     let content = fs::read_to_string(path)?;
-    let (fm, _body) = frontmatter::extract(&content)?;
+    let (_fm, body) = frontmatter::extract(&content)?;
 
-    let tags = TagPath::from_frontmatter(&fm);
+    // Extract primary tag from body (first line: { #tag/path })
+    let primary_tag_opt = crate::tags::parser::extract_primary_tag(&body);
 
-    if tags.is_empty() {
-        return Ok(None); // No tags, skip
-    }
-
-    // If multiple tags, prompt user to select
-    let selected_tag = if tags.len() == 1 {
-        &tags[0]
+    let selected_tag = if let Some(primary_tag) = primary_tag_opt {
+        primary_tag
     } else {
-        let tag_strings: Vec<String> = tags.iter().map(|t| t.to_slash_string()).collect();
+        // Fallback: check frontmatter tags for backward compatibility
+        let fm_tags = TagPath::from_frontmatter(&_fm);
 
-        println!("\nEl archivo tiene {} tags:", tags.len());
-        for (i, tag) in tag_strings.iter().enumerate() {
-            println!("  {}. {}", i + 1, tag);
+        if fm_tags.is_empty() {
+            return Ok(None); // No tags at all, skip
         }
 
-        let selection = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Selecciona el tag destino (ESC para omitir)")
-            .items(&tag_strings)
-            .default(0)
-            .interact_opt()?;
+        // If multiple tags in frontmatter, prompt user to select
+        if fm_tags.len() == 1 {
+            fm_tags.into_iter().next().unwrap()
+        } else {
+            let tag_strings: Vec<String> = fm_tags.iter().map(|t| t.to_slash_string()).collect();
 
-        match selection {
-            Some(idx) => &tags[idx],
-            None => return Ok(None), // User cancelled
+            println!("\nEl archivo tiene {} tags en frontmatter:", fm_tags.len());
+            for (i, tag) in tag_strings.iter().enumerate() {
+                println!("  {}. {}", i + 1, tag);
+            }
+
+            let selection = Select::with_theme(&ColorfulTheme::default())
+                .with_prompt("Selecciona el tag destino (ESC para omitir)")
+                .items(&tag_strings)
+                .default(0)
+                .interact_opt()?;
+
+            match selection {
+                Some(idx) => fm_tags.into_iter().nth(idx).unwrap(),
+                None => return Ok(None), // User cancelled
+            }
         }
     };
 
@@ -135,8 +144,7 @@ fn redir_file_inner(vault: &Path, config: &Config, path: &Path, no_backup: bool)
 
     // Create backup if not disabled
     if !no_backup {
-        let backup_path = path.with_extension("md.bak");
-        fs::copy(path, &backup_path)?;
+        create_backup(vault, path)?;
     }
 
     // Create destination directory
@@ -158,4 +166,32 @@ fn redir_file_inner(vault: &Path, config: &Config, path: &Path, no_backup: bool)
     fs::rename(path, &dest_path)?;
 
     Ok(Some(dest_path))
+}
+
+/// Create backup in vault/.arc/backups/ with timestamp
+/// Backups are stored flat (no directory structure) with format: filename_YYYYMMDD_HHMMSS.md.bak
+fn create_backup(vault: &Path, file_path: &Path) -> anyhow::Result<()> {
+    let backup_dir = vault.join(".arc").join("backups");
+    fs::create_dir_all(&backup_dir)?;
+
+    // Get filename without path
+    let filename = file_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| anyhow::anyhow!("Invalid filename"))?;
+
+    // Generate timestamp
+    let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
+
+    // Build backup filename: original_20260202_131045.md.bak
+    let backup_filename = if let Some(stem) = filename.strip_suffix(".md") {
+        format!("{}_{}.md.bak", stem, timestamp)
+    } else {
+        format!("{}_{}.bak", filename, timestamp)
+    };
+
+    let backup_path = backup_dir.join(backup_filename);
+    fs::copy(file_path, &backup_path)?;
+
+    Ok(())
 }

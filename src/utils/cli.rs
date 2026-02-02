@@ -80,6 +80,10 @@ pub struct Args {
     #[arg(long = "no-bak")]
     pub no_bak: bool,
 
+    /// No agregar alias al cambiar tag primario con --retag
+    #[arg(long = "no-alias")]
+    pub no_alias: bool,
+
     /// Crear/abrir nota en Obsidian desde directorio productivo
     #[arg(short = 'o', long = "obsidian", value_name = "TÍTULO", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir", "migrate", "quick"])]
     pub obsidian: Option<String>,
@@ -142,6 +146,7 @@ impl Args {
             return Ok(ValidatedArgs::Retag {
                 target,
                 no_backup: self.no_bak,
+                no_alias: self.no_alias,
             });
         }
 
@@ -281,6 +286,7 @@ pub enum ValidatedArgs {
     Retag {
         target: String,
         no_backup: bool,
+        no_alias: bool,
     },
     Redir {
         target: String,

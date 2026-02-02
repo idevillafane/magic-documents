@@ -9,7 +9,7 @@ pub fn write_note(path: &Path, fm: &Mapping, body: &str) -> anyhow::Result<()> {
         let fm_str = serde_yaml::to_string(fm)?;
         out.push_str("---\n");
         out.push_str(&fm_str);
-        out.push_str("---\n\n");
+        out.push_str("---\n");
     }
     out.push_str(body);
     fs::create_dir_all(path.parent().unwrap())?;

@@ -245,60 +245,72 @@ tags: ["diario"]
 
 ## Gestión de Tags
 
-### Sistema de Tags Jerárquicos
+### Sistema de Tags: Primarios y Secundarios
 
-El sistema soporta tags jerárquicos que permiten organizar tus notas en estructuras de árbol. Los tags jerárquicos se representan de varias formas equivalentes:
+El sistema distingue entre **tags primarios** (derivados de la estructura de directorios) y **tags secundarios** (adicionales):
 
-#### Formatos Soportados
+#### Tag Primario
 
-Todas estas formas son **equivalentes** y representan el mismo tag jerárquico `experta → ia-recuperos`:
+- **Ubicación**: Primera línea del cuerpo (después del frontmatter)
+- **Formato**: `{ #tag/jerarquico/aqui }`
+- **Derivación**: Se genera automáticamente desde la ruta del directorio relativa a `tag_root`
+- **Propósito**: Define la ubicación estructural de la nota en el vault
 
-```yaml
-# Forma 1: Array con niveles separados
-tags:
-- experta
-- ia-recuperos
-
-# Forma 2: String con slash
-tags:
-- experta/ia-recuperos
-
-# Forma 3: Mixto
-tags:
-- experta
-- ia/recuperos
-```
-
-**Importante**: El array completo representa UN SOLO tag jerárquico. El orden de los elementos define la jerarquía.
-
-#### Ejemplos Prácticos
-
-```yaml
-# Tag jerárquico de tres niveles: padre → hijo → nieto
-tags:
-- padre
-- hijo
-- nieto
-
-# Equivalente usando slashes
-tags:
-- padre/hijo/nieto
-
-# Equivalente mixto
-tags:
-- padre
-- hijo/nieto
-```
-
-#### Tags en el Cuerpo del Documento
-
-También puedes usar tags inline con `#`:
-
+**Ejemplo de archivo**:
 ```markdown
-#proyecto/cliente/acme
+---
+date: "2026-02-02"
+time: "12:45"
+aliases: []
+tags:
+  - tag-secundario-1
+  - tag-secundario-2
+---
+{ #dev/magic-documents }
+
+# Título de la nota
+
+Contenido...
 ```
 
-Estos tags con `#` se guardan preferentemente usando el formato slash en el frontmatter.
+#### Tags Secundarios
+
+- **Ubicación**: `frontmatter.tags` (array YAML)
+- **Formato**: Strings simples o con slash: `["tag1", "tag2/subtag"]`
+- **Propósito**: Tags adicionales para categorización cruzada
+
+#### Comportamiento de Comandos
+
+**`mad "título"` o `mad "título" .`**
+- Sugiere tag primario basado en directorio actual
+- Inserta `{ #tag/primario }` como primera línea del cuerpo
+- Permite agregar tags secundarios al frontmatter
+
+**`mad --retag file.md`**
+- Recalcula tag primario desde la ruta del archivo
+- Actualiza la línea `{ #tag }` en el cuerpo
+- Si el tag primario cambió:
+  - Agrega el viejo tag primario a `aliases` con formato: `2026-02-02 old/tag`
+- Opciones:
+  - `--no-bak` - No crear archivo de backup
+  - `--no-alias` - No agregar viejo tag a aliases
+- Los backups se guardan en `vault/.arc/backups/` con timestamp: `filename_YYYYMMDD_HHMMSS.md.bak`
+
+**`mad --redir file.md`**
+- Lee el tag primario desde la línea `{ #tag }` del cuerpo
+- Mueve el archivo al directorio correspondiente a ese tag
+- Opciones:
+  - `--no-bak` - No crear archivo de backup
+- Los backups se guardan en `vault/.arc/backups/` con timestamp: `filename_YYYYMMDD_HHMMSS.md.bak`
+
+#### Formato de Aliases al Cambiar Tag Primario
+
+Cuando se hace `retag` y el tag primario cambia:
+```yaml
+aliases:
+  - "2026-02-02 old/tag/path"
+  - "2026-01-15 another/old/tag"
+```
 
 ### Selector interactivo de tags
 
