@@ -34,7 +34,7 @@ fn redir_recursive(vault: &Path, config: &Config, no_backup: bool) -> anyhow::Re
 
     VaultWalker::new(&current_dir)
         .exclude_templates(&templates_path)
-        .walk(|path, _content| {
+        .walk_paths(|path| {
             files_to_process.push(path.to_path_buf());
             Ok(())
         })?;

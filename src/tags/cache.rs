@@ -1,6 +1,5 @@
-use super::parser::TagPath;
 use super::tree::TagNode;
-use crate::core::frontmatter;
+use crate::vault::scan;
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -51,18 +50,12 @@ pub fn collect(vault: &Path) -> anyhow::Result<TagNode> {
     let config = crate::core::config::Config::load_default()?;
     let templates_path = vault.join(&config.templates_dir);
 
-    crate::utils::vault::VaultWalker::new(vault)
-        .exclude_hidden(true) // Exclude hidden directories
-        .exclude_templates(&templates_path) // Exclude templates
-        .walk(|_path, content| {
-            if let Ok((fm, _)) = frontmatter::extract(content) {
-                let tag_paths = TagPath::from_frontmatter(&fm);
-                for tag_path in tag_paths {
-                    root.insert_path(&tag_path.0);
-                }
-            }
-            Ok(())
-        })?;
+    let items = scan::scan_tags(vault, &templates_path)?;
+    for item in items {
+        for tag_path in item.secondary_tags {
+            root.insert_path(&tag_path.0);
+        }
+    }
 
     Ok(root)
 }
