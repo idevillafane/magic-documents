@@ -283,6 +283,7 @@ mod tests {
             editor: None,
             editor_mode: None,
             timeprint: None,
+            rcal_config: None,
         };
 
         // Change to project dir and rename both dirs
@@ -346,6 +347,7 @@ mod tests {
             editor: None,
             editor_mode: None,
             timeprint: None,
+            rcal_config: None,
         };
 
         // Change to vault dir and rename both dirs

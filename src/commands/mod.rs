@@ -9,4 +9,5 @@ pub mod redir;
 pub mod rename;
 pub mod retag;
 pub mod tman;
+pub mod rcal_tasks;
 pub mod todo;

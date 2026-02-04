@@ -25,6 +25,9 @@ pub struct Config {
     /// Ejemplo: "/Users/usuario/Developer" = "developer"
     #[serde(default)]
     pub dir_mappings: Option<HashMap<String, String>>,
+    /// Path al config de rcal (por defecto: ~/.config/rcal/config.toml)
+    #[serde(default)]
+    pub rcal_config: Option<String>,
 }
 
 fn default_notes_dir() -> String {

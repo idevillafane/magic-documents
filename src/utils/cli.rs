@@ -91,6 +91,9 @@ pub enum Command {
         /// Marca todas las tareas (peligroso)
         #[arg(long = "force-check-everywhere")]
         force_check_everywhere: bool,
+        /// Vista completa con TUI
+        #[arg(long = "full")]
+        full: bool,
     },
 
     /// Crear alias de comandos
@@ -181,8 +184,9 @@ impl Args {
                 Command::Cache { kind } => Ok(ValidatedArgs::Cache {
                     kind: parse_cache_kind(kind.as_deref())?,
                 }),
-                Command::Tasks { force_check_everywhere } => Ok(ValidatedArgs::Tasks {
+                Command::Tasks { force_check_everywhere, full } => Ok(ValidatedArgs::Tasks {
                     mark_all: force_check_everywhere,
+                    full,
                 }),
                 Command::Alias { name, command } => Ok(ValidatedArgs::Alias { name, command }),
             };
@@ -317,6 +321,7 @@ pub enum ValidatedArgs {
     },
     Tasks {
         mark_all: bool,
+        full: bool,
     },
     Alias {
         name: String,

@@ -74,9 +74,9 @@ fn main() -> anyhow::Result<()> {
             let editor_cmd = resolve_editor(&config, editor);
             commands::obsidian::run(&vault, config, title, editor_cmd)?;
         }
-        ValidatedArgs::Tasks { mark_all } => {
+        ValidatedArgs::Tasks { mark_all, full } => {
             let (config, vault) = load_config()?;
-            commands::todo::run(vault, config, mark_all)?;
+            commands::todo::run(vault, config, mark_all, full)?;
         }
         ValidatedArgs::Cache { kind } => {
             let (config, vault) = load_config()?;
