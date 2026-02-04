@@ -13,11 +13,9 @@ fn main() -> anyhow::Result<()> {
             let (_, vault) = load_config()?;
             match action {
                 TmanAction::List => commands::tman::list_tags(&vault, false)?,
-                TmanAction::ListAll => commands::tman::list_tags(&vault, true)?,
                 TmanAction::Rename => commands::tman::rename_tags(&vault)?,
                 TmanAction::Find => commands::tman::find_by_tag(&vault)?,
-                TmanAction::Visual => commands::tman::visual_selector()?,
-                TmanAction::Interactive => commands::tman::run(&vault)?,
+                TmanAction::Log => commands::tman::visual_selector()?,
             }
         }
         ValidatedArgs::Daily {
@@ -42,17 +40,6 @@ fn main() -> anyhow::Result<()> {
             }
             let editor_cmd = resolve_editor(&config, editor);
             commands::last::run(vault, config, count, editor_cmd)?;
-        }
-        ValidatedArgs::LastNote {
-            editor,
-            skip_timestamp,
-        } => {
-            let (mut config, vault) = load_config()?;
-            if skip_timestamp {
-                config.timeprint = Some(false);
-            }
-            let editor_cmd = resolve_editor(&config, editor);
-            commands::recent::open_last_note(vault, config, editor_cmd)?;
         }
         ValidatedArgs::Create {
             title,
@@ -87,9 +74,25 @@ fn main() -> anyhow::Result<()> {
             let editor_cmd = resolve_editor(&config, editor);
             commands::obsidian::run(&vault, config, title, editor_cmd)?;
         }
-        ValidatedArgs::Migrate => {
+        ValidatedArgs::Tasks { mark_all } => {
             let (config, vault) = load_config()?;
-            commands::migrate::run(&vault, &config)?;
+            commands::todo::run(vault, config, mark_all)?;
+        }
+        ValidatedArgs::Cache { kind } => {
+            let (config, vault) = load_config()?;
+            commands::cache::run(&vault, &config, kind)?;
+        }
+        ValidatedArgs::Alias { name, command } => {
+            let aliases = mad::utils::alias::load_aliases()?;
+            let mut updated = aliases;
+
+            if mad::utils::alias::is_reserved_word(&name) {
+                anyhow::bail!("Alias reservado: '{}'", name);
+            }
+
+            updated.insert(name.clone(), command.clone());
+            mad::utils::alias::save_aliases(&updated)?;
+            println!("✅ Alias creado: {} → {}", name, command);
         }
         ValidatedArgs::Rename { new_name, no_retag } => {
             let (config, _vault) = load_config()?;

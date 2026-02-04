@@ -66,9 +66,19 @@ impl Config {
         Ok(Self::config_dir()?.join("tags_cache.json"))
     }
 
+    /// Returns the primary tags cache file path (~/.config/magic-documents/primary_tags_cache.json)
+    pub fn primary_cache_path() -> anyhow::Result<PathBuf> {
+        Ok(Self::config_dir()?.join("primary_tags_cache.json"))
+    }
+
     /// Returns the last note file path (~/.config/magic-documents/.last_note)
     pub fn last_note_path() -> anyhow::Result<PathBuf> {
         Ok(Self::config_dir()?.join(".last_note"))
+    }
+
+    /// Returns the aliases file path (~/.config/magic-documents/aliases.json)
+    pub fn aliases_path() -> anyhow::Result<PathBuf> {
+        Ok(Self::config_dir()?.join("aliases.json"))
     }
 
     /// Loads the default config from ~/.config/magic-documents/config.toml

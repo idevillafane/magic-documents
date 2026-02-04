@@ -1,6 +1,6 @@
 use crate::core::config::Config;
 use crate::core::frontmatter;
-use crate::tags::TagPath;
+use crate::vault::scan;
 use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input, Select};
 use serde_yaml::Value;
 use std::collections::{HashMap, HashSet};
@@ -70,22 +70,22 @@ fn collect_all_tags(vault: &Path) -> anyhow::Result<HashMap<Vec<String>, Vec<Pat
     let config = Config::load_default()?;
     let templates_path = vault.join(&config.templates_dir);
 
-    let mut tag_map: HashMap<Vec<String>, Vec<PathBuf>> = HashMap::new();
+    let mut tag_map: HashMap<Vec<String>, HashSet<PathBuf>> = HashMap::new();
 
-    crate::utils::vault::VaultWalker::new(vault)
-        .exclude_templates(&templates_path)
-        .walk(|path, content| {
-            if let Ok((fm, _)) = frontmatter::extract(content) {
-                let tag_paths = TagPath::from_frontmatter(&fm);
-                for tag_path in tag_paths {
-                    tag_map
-                        .entry(tag_path.0)
-                        .or_insert_with(Vec::new)
-                        .push(path.to_path_buf());
-                }
-            }
-            Ok(())
-        })?;
+    let items = scan::scan_tags(vault, &templates_path)?;
+    for item in items {
+        for tag in item.secondary_tags {
+            tag_map
+                .entry(tag.0)
+                .or_insert_with(HashSet::new)
+                .insert(item.path.clone());
+        }
+    }
+
+    let tag_map = tag_map
+        .into_iter()
+        .map(|(k, v)| (k, v.into_iter().collect()))
+        .collect::<HashMap<Vec<String>, Vec<PathBuf>>>();
 
     Ok(tag_map)
 }
@@ -409,8 +409,8 @@ fn rename_tag(vault: &Path) -> anyhow::Result<()> {
         if let Ok(content) = fs::read_to_string(file_path) {
             if let Ok((mut fm, body)) = frontmatter::extract(&content) {
                 for key in ["tags", "tag", "Tags", "Tag"] {
-                    if let Some(Value::Sequence(tag_list)) = fm.get(&Value::String(key.to_string()))
-                    {
+                    let key_val = Value::String((*key).to_string());
+                    if let Some(Value::Sequence(tag_list)) = fm.get(&key_val) {
                         let mut new_list = Vec::new();
                         let mut any_updated = false;
 

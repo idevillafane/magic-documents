@@ -1,5 +1,6 @@
-use super::cache;
+use super::primary_cache;
 use super::tree::TagNode;
+use crate::core::config::Config;
 use crate::ui::input::input_with_esc;
 use dialoguer::{theme::ColorfulTheme, FuzzySelect, Select};
 use std::path::Path;
@@ -8,7 +9,9 @@ use std::path::Path;
 /// Returns slash-separated tag string (e.g., "padre/hijo/nieto")
 pub fn select_hierarchical(vault: &Path) -> anyhow::Result<String> {
     let config_dir = crate::core::config::Config::config_dir()?;
-    let tag_tree = cache::load(vault, &config_dir)?;
+    let config = Config::load_default()?;
+    let templates_path = vault.join(&config.templates_dir);
+    let tag_tree = primary_cache::load(vault, &config_dir, &templates_path)?.root;
 
     if tag_tree.children.is_empty() {
         println!("No se encontraron tags en el vault.");
@@ -109,7 +112,9 @@ pub fn select_hierarchical(vault: &Path) -> anyhow::Result<String> {
 /// Returns slash-separated tag string (e.g., "padre/hijo/nieto")
 pub fn select_with_fuzzy(vault: &Path) -> anyhow::Result<String> {
     let config_dir = crate::core::config::Config::config_dir()?;
-    let tag_tree = cache::load(vault, &config_dir)?;
+    let config = Config::load_default()?;
+    let templates_path = vault.join(&config.templates_dir);
+    let tag_tree = primary_cache::load(vault, &config_dir, &templates_path)?.root;
 
     if tag_tree.children.is_empty() {
         println!("No se encontraron tags en el vault.");

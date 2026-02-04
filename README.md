@@ -19,7 +19,7 @@ Una herramienta CLI en Rust para crear y gestionar notas Markdown con frontmatte
 - Números de línea y barra de estado
 - Soporte para editores externos (vim, nvim, nano, etc.)
 
-### 🏷️ Gestión de Tags (tman)
+### 🏷️ Gestión de Tags (`tag`)
 - **Selector interactivo** con búsqueda fuzzy en tiempo real
 - Listado y navegación de todos los tags del vault
 - Renombrado masivo de tags (con soporte para jerarquías)
@@ -28,8 +28,8 @@ Una herramienta CLI en Rust para crear y gestionar notas Markdown con frontmatte
 - Exclusión de carpeta de templates
 
 ### 📅 Funcionalidades Especiales
-- **Daily notes**: Crea o abre la nota del día con `-d`
-- **Últimas notas**: Lista las últimas N notas editadas con `-l`
+- **Dialy notes**: Crea o abre la nota del día con `mad dialy`
+- **Últimas notas**: Abre la última con `mad last` o lista N con `mad last N`
 - **Acceso rápido**: Abre la última nota con `md ..`
 - Formatos de fecha/hora configurables
 
@@ -68,7 +68,7 @@ notes_dir = "Notas"             # carpeta para notas generales (default: "Notas"
 diary_dir = "Diario"            # carpeta para daily notes (default: "Diario")
 templates_dir = "Templates"      # carpeta para templates (default: "Templates")
 
-# Mapeo de directorios trabajo → documentación (para mad -o / mad -q)
+# Mapeo de directorios trabajo → documentación (para mad -q)
 [dir_mappings]
 "/Users/tu/Developer" = "developer"
 "/Users/tu/Proyectos" = "proyectos"
@@ -85,104 +85,46 @@ templates_dir = "Templates"      # carpeta para templates (default: "Templates")
 | `editor_mode` | String | Modo de editor: `"integrated"` o `"external"` | `"integrated"` |
 | `editor` | String | Editor externo (usado por `Ctrl+G`, `-e`, y si `editor_mode = "external"`) | `"vi"` |
 | `timeprint` | Boolean | Añade timestamp al abrir notas existentes | `true` |
-| `tag_root` | String | Directorio raíz para derivación de tags (usado en `mad -o/-q`) | `"Notas"` |
+| `tag_root` | String | Directorio raíz para derivación de tags (usado en `mad -q`) | `"Notas"` |
 | `notes_dir` | String | Carpeta para notas generales | `"Notas"` |
 | `diary_dir` | String | Carpeta para daily notes | `"Diario"` |
 | `templates_dir` | String | Carpeta para templates | `"Templates"` |
-| `dir_mappings` | HashMap | Mapeo de directorios trabajo → documentación (ver `mad -o`) | `{}` |
+| `dir_mappings` | HashMap | Mapeo de directorios trabajo → documentación (ver `mad -q`) | `{}` |
 
 ## Uso
 
 ### Sintaxis básica
 
 ```bash
-# Crear nota con título (título al final)
-mad "Mi Nota"
-mad -n "Mi Nota"
-
-# Abrir la última nota editada
-mad -L
-
-# Crear o abrir daily note
-mad -d
-
-# Listar últimas 5 notas editadas
-mad -l
-
-# Listar últimas N notas editadas
-mad --last 10
-
-# Usar editor configurado (flags combinables)
-mad -e "Mi Nota"              # crear con editor config
-mad -de                       # daily con editor config
-mad -el                       # últimas 5 con editor config
-mad -eL                       # última nota con editor config
-
-# No agregar timestamp al abrir nota existente
-mad -iL                       # última nota sin timestamp
-mad -eiL                      # última nota con editor y sin timestamp
-mad -il                       # listar últimas 5 y abrir sin timestamp
-
-# Especificar editor personalizado
-mad --editor nvim "Mi Nota"
-mad --editor code -d
-mad --last 10 --editor vim
-
-# Gestión de tags (modo interactivo)
-mad -t
-
-# Listar tags (flags cortos combinables)
-mad -tl                       # listar tags
-mad --tman list               # forma larga
-
-# Otras acciones de tags
-mad -ta                       # listar todos (incluye Archived)
-mad -tr                       # renombrar tags
-mad -tf                       # buscar por tag
-mad --tman rename             # forma larga
-
-# Integración con Obsidian desde directorio productivo
-mad -o "Título"               # crear/abrir nota desde directorio mapeado
-mad -q "Título"               # alias corto (quick)
+mad <comando> [args]
+mad [-t|--title] "TITULO" [DIR]
 ```
 
-### Opciones principales
+Comandos: `dialy`, `last`, `tag`, `retag`, `redir`, `cache`, `tasks`, `alias`
 
-```
-USAGE:
-    mad [OPCIONES] [TÍTULO]
+Reglas:
+- Los títulos deben ir entre comillas (simples o dobles).
+- Si el título es una sola palabra, usa `--title`.
+- Las palabras reservadas son los comandos y los alias definidos.
 
-ARGS:
-    <TÍTULO>               Título de la nota (debe ir al final, después de opciones)
-
-OPCIONES:
-    -h, --help             Muestra mensaje de ayuda
-    -d, --daily            Crear o abrir daily note
-    -o, --obsidian         Crear/abrir nota desde directorio mapeado (ver dir_mappings)
-    -q, --quick            Alias de --obsidian
-    -l                     Mostrar últimas 5 notas
-    --last <N>             Mostrar últimas N notas
-    -e                     Usar editor configurado
-    --editor <EDITOR>      Usar editor específico
-    -i, --no-id            No agregar timestamp al abrir nota existante
-    -L, --last-note        Abrir última nota editada
-    -n, --name <TÍTULO>    Nombre de la nota (alternativa al argumento posicional)
-    -t[ACCIÓN]             Gestión de tags (incompatible con otras opciones)
-    --tman <ACCIÓN>        Gestión de tags (forma larga)
-
-FLAGS DE TMAN (combinables con -t):
-    -tl, --tman list       Lista todos los tags (excluye Archived)
-    -ta, --tman list-all   Lista todos los tags (incluye Archived)
-    -tr, --tman rename     Renombrar tags
-    -tf, --tman find       Buscar archivos por tag
-    -t,  --tman            Modo interactivo (por defecto)
-
-REGLAS:
-    • Las opciones van ANTES del título posicional
-    • -d, -l, y título son mutuamente excluyentes
-    • -t/--tman es incompatible con todas las demás opciones
-    • No se puede combinar -e con --editor
-    • Flags cortos son combinables: -el, -de, -tl, etc.
+Ejemplos:
+```bash
+mad dialy
+mad last
+mad last 10
+mad tag
+mad tag list
+mad tag rename
+mad tag find
+mad tag log
+mad retag file.md
+mad redir file.md
+mad cache
+mad cache dir-tags
+mad tasks
+mad tasks --force-check-everywhere
+mad alias hoy "mad dialy"
+mad -q "Título"
 ```
 
 ## Sistema de Templates
@@ -245,11 +187,11 @@ tags: ["diario"]
 
 ## Gestión de Tags
 
-### Sistema de Tags: Primarios y Secundarios
+### Sistema de Tags: Dir-Tags y Tags normales
 
-El sistema distingue entre **tags primarios** (derivados de la estructura de directorios) y **tags secundarios** (adicionales):
+El sistema distingue entre **dir-tags** (derivados de la estructura de directorios) y **tags normales**:
 
-#### Tag Primario
+#### Dir-Tag
 
 - **Ubicación**: Primera línea del cuerpo (después del frontmatter)
 - **Formato**: `{ #tag/jerarquico/aqui }`
@@ -263,8 +205,8 @@ date: "2026-02-02"
 time: "12:45"
 aliases: []
 tags:
-  - tag-secundario-1
-  - tag-secundario-2
+  - tag-normal-1
+  - tag-normal-2
 ---
 { #dev/magic-documents }
 
@@ -273,37 +215,38 @@ tags:
 Contenido...
 ```
 
-#### Tags Secundarios
+#### Tags normales
 
-- **Ubicación**: `frontmatter.tags` (array YAML)
+- **Ubicación**: `frontmatter.tags` (array YAML) y en el cuerpo como `#tag`
 - **Formato**: Strings simples o con slash: `["tag1", "tag2/subtag"]`
 - **Propósito**: Tags adicionales para categorización cruzada
+- **Nota**: Los dir-tags también cuentan como tags normales (pero no al revés)
 
 #### Comportamiento de Comandos
 
 **`mad "título"` o `mad "título" .`**
-- Sugiere tag primario basado en directorio actual
-- Inserta `{ #tag/primario }` como primera línea del cuerpo
-- Permite agregar tags secundarios al frontmatter
+- Sugiere dir-tag basado en directorio actual
+- Inserta `{ #tag/dir }` como primera línea del cuerpo
+- Permite agregar tags normales al frontmatter
 
-**`mad --retag file.md`**
-- Recalcula tag primario desde la ruta del archivo
+**`mad retag file.md`**
+- Recalcula dir-tag desde la ruta del archivo
 - Actualiza la línea `{ #tag }` en el cuerpo
-- Si el tag primario cambió:
-  - Agrega el viejo tag primario a `aliases` con formato: `2026-02-02 old/tag`
+- Si el dir-tag cambió:
+  - Agrega el viejo dir-tag a `aliases` con formato: `2026-02-02 old/tag`
 - Opciones:
   - `--no-bak` - No crear archivo de backup
   - `--no-alias` - No agregar viejo tag a aliases
 - Los backups se guardan en `vault/.arc/backups/` con timestamp: `filename_YYYYMMDD_HHMMSS.md.bak`
 
-**`mad --redir file.md`**
-- Lee el tag primario desde la línea `{ #tag }` del cuerpo
+**`mad redir file.md`**
+- Lee el dir-tag desde la línea `{ #tag }` del cuerpo
 - Mueve el archivo al directorio correspondiente a ese tag
 - Opciones:
   - `--no-bak` - No crear archivo de backup
 - Los backups se guardan en `vault/.arc/backups/` con timestamp: `filename_YYYYMMDD_HHMMSS.md.bak`
 
-#### Formato de Aliases al Cambiar Tag Primario
+#### Formato de Aliases al Cambiar Dir-Tag
 
 Cuando se hace `retag` y el tag primario cambia:
 ```yaml
@@ -324,78 +267,30 @@ El sistema de tags te permite:
 
 Al crear una nota, los tags se guardan automáticamente en el frontmatter como array:
 
-### tman - Tag Manager
+### tag - Tag Manager
 
-El gestor de tags (`tman`) es una herramienta completa para administrar tags en tu vault:
+El gestor de tags se usa con `mad tag`:
 
-#### Modo interactivo
 ```bash
-mad -t
+mad tag            # list (default)
+mad tag list       # lista tags
+mad tag rename     # renombrar tags
+mad tag find       # buscar por tag
+mad tag log        # selector visual (si está implementado)
 ```
 
-Menú interactivo con opciones para:
-- 📋 Listar tags (flat view)
-- ✏️ Renombrar tags
-- 🔍 Buscar archivos por tag
-
-#### Listar tags
-```bash
-# Listar todos los tags (excluye Archived)
-mad -t list
-
-# Listar todos los tags (incluye Archived)
-mad -t list-all
-```
-
-Muestra todos los tags con sus jerarquías y cuenta de archivos. Los tags de la carpeta de templates son excluidos automáticamente.
-
-#### Renombrar tags
-```bash
-mad -t rename
-```
-
-Permite renombrar tags de forma masiva con dos modos:
-1. **Solo este nivel**: Renombra únicamente el tag seleccionado
-2. **Recursivo**: Renombra el tag y todos sus sub-tags
-
-Ejemplo:
-- Tag original: `proyecto/cliente/acme`
-- Nuevo nombre: `work/client/acme`
-- Modo recursivo actualiza todos los archivos y sub-tags automáticamente
-
-#### Buscar por tag
-```bash
-mad -t find
-```
-
-Búsqueda interactiva con **filtrado fuzzy en tiempo real**. Escribe parte del nombre del tag para filtrar la lista y ver rápidamente los archivos que lo contienen.
-
-**Ejemplo de uso:**
-- Escribes "experta" → Filtra y muestra tags que contienen "experta"
-- Seleccionas "experta → ia-recuperos"
-- Lista todos los archivos con ese tag
-
-### Características de tman
-- ✅ Excluye automáticamente carpetas ocultas (`.obsidian`, `.trash`, etc.)
-- ✅ Excluye la carpeta de templates configurada
-- ✅ Excluye tags "Archived" por defecto (usa `list-all` para incluirlos)
-- ✅ Búsqueda fuzzy en tiempo real para filtrado rápido
-- ✅ Soporte completo para tags jerárquicos con navegación por niveles
-- ✅ Cache automático para mejor rendimiento
+Incluye:
+- Filtrado fuzzy en tiempo real
+- Navegación jerárquica
+- Exclusión de carpetas ocultas y templates
+- Cache para rendimiento
 
 ### Regenerar Cache de Tags
 
-El sistema mantiene un cache de tags en `~/.mad/tags_cache.json` para mejorar el rendimiento. Si cambias tags manualmente en archivos o notas comportamiento extraño:
-
 ```bash
-# Eliminar el cache (se regenera automáticamente en el próximo uso)
-rm ~/.mad/tags_cache.json
+mad cache          # all (tags + dir-tags)
+mad cache dir-tags # solo dir-tags
 ```
-
-El cache se actualiza automáticamente cuando:
-- Creas una nueva nota con tags
-- Renombras tags desde tman
-- No existe el archivo de cache
 
 ## Editor Integrado
 
@@ -449,7 +344,7 @@ Formato del timestamp:
 
 ### Daily note
 ```bash
-mad -d
+mad dialy
 # Crea o abre: vault/Diario/2025-12-18.md
 ```
 
@@ -461,118 +356,53 @@ mad "Ideas para el proyecto"
 
 ### Últimas notas editadas
 ```bash
-# Ver últimas 5 notas
-mad -l
+# Abrir la última nota
+mad last
 
 # Ver últimas 15 notas
-mad -l 15
-```
-
-### Abrir última nota
-```bash
-mad ..
-# Abre la última nota que editaste
+mad last 15
 ```
 
 ### Gestión de tags
 ```bash
-# Modo interactivo
-mad -t
+# Listar tags
+mad tag
 
-# Listar todos los tags
-mad -t list
+# Listar tags (explícito)
+mad tag list
 
 # Renombrar tags masivamente
-mad -t rename
+mad tag rename
 
 # Buscar archivos por tag
-mad -t find
+mad tag find
 ```
 
-### Integración con Obsidian (mad -o / mad -q)
+### Quick (mad -q)
 
-Documenta proyectos productivos en tu vault de Obsidian manteniendo estructura de directorios espejo mediante mapeo de directorios configurados.
-
-#### Setup inicial
-
-Configura el mapeo de directorios en `~/.config/magic-documents/config.toml`:
+Atajo para crear/abrir notas desde directorios de trabajo mapeados.
 
 ```toml
-vault = "/ruta/a/tu/vault"
-tag_root = "Notas"
-
 [dir_mappings]
 "/Users/tu/Developer" = "developer"
-"/Users/tu/Proyectos/cliente-acme" = "proyectos/acme"
-"/Users/tu/Bases-de-datos" = "databases"
 ```
 
-**Explicación del mapeo:**
-- **Clave**: Path absoluto del directorio de trabajo
-- **Valor**: Path relativo dentro de `tag_root` donde se crearán los documentos
-
-#### Uso
-
 ```bash
-# Desde cualquier subdirectorio bajo un directorio mapeado
-mad -o "Título de la nota"   # forma larga
-mad -q "Título de la nota"   # forma corta (quick)
-
-# Ejemplo desde ~/Developer/proyecto/backend/
 mad -q "API Documentation"
-# Crea: vault/Notas/developer/proyecto/backend/api-documentation.mad
-# Tag: ["developer/proyecto/backend"]
 ```
-
-#### Comportamiento
-
-1. Detecta automáticamente el directorio de trabajo actual
-2. Busca el mapeo más específico (prefijo más largo) que coincida
-3. Calcula el path relativo desde el directorio mapeado hasta el directorio actual
-4. Construye el tag combinando: `doc_subpath` + `relative_path`
-5. Crea la estructura de directorios en `vault/tag_root/doc_subpath/relative_path/`
-6. Solicita confirmación antes de crear directorios nuevos
-
-#### Ejemplo completo
-
-**Configuración:**
-```toml
-[dir_mappings]
-"/Users/usuario/Developer" = "developer"
-```
-
-**Uso:**
-```bash
-# Navegar al proyecto
-cd /Users/usuario/Developer/cliente-acme/api
-
-# Crear nota
-mad -q "Endpoints REST"
-
-# Resultado:
-# - Archivo: /vault/Notas/developer/cliente-acme/api/endpoints-rest.mad
-# - Tag: ["developer/cliente-acme/api"]
-# - Prompt: "Crear directorio? /vault/Notas/developer/cliente-acme/api"
-```
-
-**Ventajas sobre symlinks:**
-- ✅ Configuración centralizada en un solo archivo
-- ✅ Múltiples mapeos simultáneos
-- ✅ No requiere crear symlinks en cada proyecto
-- ✅ Más fácil de compartir configuración entre máquinas
-- ✅ Soporta mapeos con diferentes niveles de profundidad
 
 ## Arquitectura del Proyecto
 
 ```
 src/
-├── commands/       # Comandos CLI (create, daily, last, recent, tman)
-├── core/          # Lógica de negocio (config, note, template, frontmatter)
-├── tags/          # Sistema de tags (cache, selector, tree)
-├── ui/            # Interfaz de usuario (editor, prompts)
-├── utils/         # Utilidades (cli, file)
-├── lib.rs         # Módulo raíz
-└── main.rs        # Entry point
+├── commands/       # CLI (create, daily, last, tag/tman, cache, todo)
+├── core/           # Lógica de negocio (config, note, template, frontmatter)
+├── tags/           # Sistema de tags (cache, primary_cache, selector, tree)
+├── vault/          # Scan unificado
+├── ui/             # Interfaz de usuario (editor, prompts)
+├── utils/          # Utilidades (cli, file, alias)
+├── lib.rs          # Módulo raíz
+└── main.rs         # Entry point
 ```
 
 ## Dependencias
@@ -627,14 +457,14 @@ Se ha implementado un sistema robusto de tags jerárquicos con soporte para múl
 - **Tests completos**: Verificación de todos los formatos
 
 #### 🔍 Búsqueda Fuzzy Mejorada
-- **Filtrado en tiempo real** en `tman find`
+- **Filtrado en tiempo real** en `tag find`
 - **Vista jerárquica** en selector: padres primero, luego paths completos
 - **Exclusión inteligente**: Archived, templates, carpetas ocultas
 - **Cache optimizado**: Regeneración automática cuando es necesario
 
 #### 📝 Escritura Consistente
 - Tags se guardan como arrays en YAML
-- Cada elemento del array es un nivel de jerarquía
+- Cada elemento del array es un tag independiente
 - Formato limpio y fácil de leer
 - Compatible con Obsidian y otros editores
 

@@ -24,6 +24,14 @@ pub fn run(
     // Limit to requested count
     notes.truncate(count);
 
+    // If only one note requested, open it directly
+    if count == 1 && !notes.is_empty() {
+        let selected_path = &notes[0].0;
+        println!("\nAbriendo: {}", selected_path.display());
+        NoteBuilder::add_timestamp_and_open(selected_path, &vault, &config, editor)?;
+        return Ok(());
+    }
+
     // Build display items
     let display_items: Vec<String> = notes
         .iter()
@@ -57,7 +65,7 @@ pub fn run(
 fn collect_notes(vault: &Path) -> anyhow::Result<Vec<(PathBuf, SystemTime)>> {
     let mut notes = Vec::new();
 
-    crate::utils::vault::VaultWalker::new(vault).walk(|path, _content| {
+    crate::utils::vault::VaultWalker::new(vault).walk_paths(|path| {
         if let Ok(metadata) = fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
                 notes.push((path.to_path_buf(), modified));

@@ -42,6 +42,15 @@ impl<'a> VaultWalker<'a> {
         self.walk_dir(self.vault, &mut visitor)
     }
 
+    /// Walk through the vault and call the visitor for each markdown file
+    /// The visitor receives only the file path (no file reads)
+    pub fn walk_paths<F>(&self, mut visitor: F) -> anyhow::Result<()>
+    where
+        F: FnMut(&Path) -> anyhow::Result<()>,
+    {
+        self.walk_dir_paths(self.vault, &mut visitor)
+    }
+
     fn walk_dir<F>(&self, dir: &Path, visitor: &mut F) -> anyhow::Result<()>
     where
         F: FnMut(&Path, &str) -> anyhow::Result<()>,
@@ -78,6 +87,46 @@ impl<'a> VaultWalker<'a> {
                 if let Ok(content) = fs::read_to_string(&path) {
                     visitor(&path, &content)?;
                 }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn walk_dir_paths<F>(&self, dir: &Path, visitor: &mut F) -> anyhow::Result<()>
+    where
+        F: FnMut(&Path) -> anyhow::Result<()>,
+    {
+        if !dir.is_dir() {
+            return Ok(());
+        }
+
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                // Skip hidden directories if configured
+                if self.exclude_hidden {
+                    if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                        if dir_name.starts_with('.') {
+                            continue;
+                        }
+                    }
+                }
+
+                // Skip templates directory if configured
+                if self.exclude_templates {
+                    if let Some(templates_path) = self.templates_path {
+                        if path == templates_path {
+                            continue;
+                        }
+                    }
+                }
+
+                self.walk_dir_paths(&path, visitor)?;
+            } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
+                visitor(&path)?;
             }
         }
 

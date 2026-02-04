@@ -1,40 +1,32 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 /// Herramienta CLI para gestión de notas Markdown
 #[derive(Parser, Debug)]
 #[command(
     name = "mad",
-    about = "Magic Documents - Herramienta para crear y gestionar notas Markdown",
-    after_help = "EJEMPLOS:\n  \
-    mad \"Mi nueva nota\"        Crea nota con selección manual de tag\n  \
-    mad \"Mi nota\" .            Crea nota en dir actual, tag auto-derivado\n  \
-    mad \"Mi nota\" path/dir     Crea nota en dir específico, tag derivado\n  \
-    mad -e \"Mi nota\"           Crea nota con editor configurado\n  \
-    mad -d                      Daily note\n  \
-    mad -l                      Últimas 5 notas\n  \
-    mad --last 10               Últimas 10 notas\n  \
-    mad -tl                     Listar tags\n  \
-    mad --tman rename           Renombrar tags\n  \
-    mad --retag file.md         Re-tag archivo según directorio\n  \
-    mad --retag .               Re-tag recursivo en dir actual\n  \
-    mad --redir file.md         Mover archivo según su tag\n  \
-    mad --redir .               Mover todos según sus tags\n  \
-    mad -r nuevo-nombre         Renombrar directorios (ambos lados) y ejecutar retag\n  \
-    mad --migrate               Convertir tags [a,b] a [a/b] en todo el vault"
+    about = "Magic Documents",
+    after_help = "USO:\n  mad <comando> [args]\n  mad [-t|--title] \"TITULO\" [DIR]\n\nComandos: dialy, last, tag, retag, redir, cache, tasks, alias\nPara ayuda: mad <comando> -h"
 )]
 pub struct Args {
-    /// Crear o abrir daily note
-    #[arg(short = 'd', long = "daily")]
-    pub daily: bool,
+    #[command(subcommand)]
+    pub command: Option<Command>,
 
-    /// Mostrar últimas 5 notas editadas
-    #[arg(short = 'l', conflicts_with_all = ["title", "name"])]
-    pub last_flag: bool,
+    /// Forzar título (permite palabras reservadas)
+    #[arg(short = 't', long = "title", value_name = "TITULO")]
+    pub title: Option<String>,
 
-    /// Mostrar últimas N notas editadas
-    #[arg(long = "last", value_name = "N", conflicts_with_all = ["title", "name"])]
-    pub last_num: Option<usize>,
+    /// Título de la nota (posicional)
+    #[arg(value_name = "TITULO")]
+    pub title_pos: Option<String>,
+
+    /// Directorio destino (posicional, implica tag derivado del path)
+    #[arg(value_name = "DIR")]
+    pub target_dir: Option<String>,
+
+    /// Alias para obsidian (crear/abrir nota desde directorio productivo)
+    #[arg(short = 'q', long = "quick", value_name = "TITULO")]
+    pub quick: Option<String>,
 
     /// Usar editor configurado
     #[arg(short = 'e')]
@@ -47,101 +39,95 @@ pub struct Args {
     /// No agregar timestamp al abrir nota existente
     #[arg(short = 'i', long = "no-id")]
     pub no_id: bool,
+}
 
-    /// Nombre de la nota
-    #[arg(
-        short = 'n',
-        long = "name",
-        value_name = "TÍTULO",
-        conflicts_with = "title"
-    )]
-    pub name: Option<String>,
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// Daily note
+    #[command(name = "dialy")]
+    Dialy,
 
-    /// Abrir última nota editada
-    #[arg(short = 'L', long = "last-note", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num"])]
-    pub last_note: bool,
+    /// Última nota o últimas N
+    Last {
+        /// Número de notas a listar
+        count: Option<usize>,
+    },
 
-    /// Gestión de tags: -tl (list), -ta (list-all), -tr (rename), -tf (find), -tv (visual/telescope), -t (interactive)
-    #[arg(short = 't', value_name = "ACCIÓN", num_args = 0..=1, default_missing_value = "interactive")]
-    pub tman: Option<String>,
-
-    /// Gestión de tags (forma larga)
-    #[arg(long = "tman", value_name = "ACCIÓN", conflicts_with = "tman")]
-    pub tman_long: Option<String>,
+    /// Gestión de tags
+    Tag {
+        /// Acción: list (default) | rename | find | log
+        action: Option<String>,
+    },
 
     /// Re-tag archivo(s) según la ubicación del directorio
-    #[arg(long = "retag", value_name = "FILE_OR_DIR", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "redir"])]
-    pub retag: Option<String>,
+    Retag {
+        /// Archivo o directorio
+        target: String,
+        /// No crear archivos .bak
+        #[arg(long = "no-bak")]
+        no_bak: bool,
+        /// No agregar alias al cambiar tag primario
+        #[arg(long = "no-alias")]
+        no_alias: bool,
+    },
 
-    /// Mover archivo(s) a directorios según sus tags
-    #[arg(long = "redir", value_name = "FILE_OR_DIR", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "migrate"])]
-    pub redir: Option<String>,
+    /// Mover archivo(s) a directorios según su dir-tag
+    Redir {
+        /// Archivo o directorio
+        target: String,
+        /// No crear archivos .bak
+        #[arg(long = "no-bak")]
+        no_bak: bool,
+    },
 
-    /// No crear archivos .bak al usar --retag o --redir
-    #[arg(long = "no-bak")]
-    pub no_bak: bool,
+    /// Regenerar cache
+    Cache {
+        /// Tipo: all (default) | dir-tags
+        kind: Option<String>,
+    },
 
-    /// No agregar alias al cambiar tag primario con --retag
-    #[arg(long = "no-alias")]
-    pub no_alias: bool,
+    /// Tareas pendientes
+    Tasks {
+        /// Marca todas las tareas (peligroso)
+        #[arg(long = "force-check-everywhere")]
+        force_check_everywhere: bool,
+    },
 
-    /// No ejecutar retag automáticamente al usar --rename
-    #[arg(long = "no-retag")]
-    pub no_retag: bool,
-
-    /// Crear/abrir nota en Obsidian desde directorio productivo
-    #[arg(short = 'o', long = "obsidian", value_name = "TÍTULO", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir", "migrate", "quick"])]
-    pub obsidian: Option<String>,
-
-    /// Alias para --obsidian (crear/abrir nota desde directorio productivo)
-    #[arg(short = 'q', long = "quick", value_name = "TÍTULO", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir", "migrate", "obsidian"])]
-    pub quick: Option<String>,
-
-    /// Migración única: convertir tags array a formato slash
-    #[arg(long = "migrate", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir", "rename"])]
-    pub migrate: bool,
-
-    /// Renombrar directorio asociado (productivo ↔ vault)
-    #[arg(short = 'r', long = "rename", value_name = "NUEVO_NOMBRE", conflicts_with_all = ["title", "name", "daily", "last_flag", "last_num", "tman", "tman_long", "retag", "redir", "migrate", "obsidian", "quick"])]
-    pub rename: Option<String>,
-
-    /// Título de la nota (argumento posicional)
-    #[arg(value_name = "TÍTULO")]
-    pub title: Option<String>,
-
-    /// Directorio destino (argumento posicional, implica tag derivado del path)
-    #[arg(value_name = "DIR")]
-    pub target_dir: Option<String>,
+    /// Crear alias de comandos
+    Alias {
+        /// Nombre del alias
+        name: String,
+        /// Comando completo (usar comillas)
+        command: String,
+    },
 }
 
 #[derive(Debug)]
 pub enum TmanAction {
     List,
-    ListAll,
     Rename,
     Find,
-    Interactive,
-    Visual,
+    Log,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum CacheKind {
+    All,
+    DirTags,
 }
 
 impl Args {
     /// Valida y procesa los argumentos
     pub fn validate(self) -> anyhow::Result<ValidatedArgs> {
-        // Handle --migrate
-        if self.migrate {
-            return Ok(ValidatedArgs::Migrate);
-        }
+        self.validate_inner(0)
+    }
 
-        // Handle --rename
-        if let Some(new_name) = self.rename {
-            return Ok(ValidatedArgs::Rename {
-                new_name,
-                no_retag: self.no_retag,
-            });
+    fn validate_inner(self, depth: usize) -> anyhow::Result<ValidatedArgs> {
+        if depth > 5 {
+            anyhow::bail!("Alias recursivo detectado");
         }
-
-        // Handle --obsidian or --quick (aliases)
-        if let Some(title) = self.obsidian.or(self.quick) {
+        // Handle quick (obsidian)
+        if let Some(title) = self.quick {
             let editor = if self.editor_flag && self.editor_cmd.is_some() {
                 anyhow::bail!("No se pueden usar -e y --editor al mismo tiempo");
             } else if self.editor_flag {
@@ -158,118 +144,134 @@ impl Args {
             });
         }
 
-        // Handle --retag
-        if let Some(target) = self.retag {
-            return Ok(ValidatedArgs::Retag {
-                target,
-                no_backup: self.no_bak,
-                no_alias: self.no_alias,
-            });
-        }
-
-        // Handle --redir
-        if let Some(target) = self.redir {
-            return Ok(ValidatedArgs::Redir {
-                target,
-                no_backup: self.no_bak,
-            });
-        }
-
-        // Procesar tman
-        let tman_value = self.tman.or(self.tman_long);
-
-        // Si hay tman, es incompatible con todo excepto -h
-        if tman_value.is_some() {
-            if self.daily
-                || self.last_flag
-                || self.last_num.is_some()
-                || self.editor_flag
-                || self.editor_cmd.is_some()
-                || self.name.is_some()
-                || self.title.is_some()
-            {
-                anyhow::bail!("--tman/-t no se puede combinar con otras opciones");
+        // Subcommands
+        if let Some(cmd) = self.command {
+            // Disallow title/dir when a command is used
+            if self.title.is_some() || self.title_pos.is_some() || self.target_dir.is_some() {
+                anyhow::bail!("No se puede combinar un comando con título o directorio");
             }
 
-            let action = match tman_value.as_deref() {
-                Some("l") | Some("list") | Some("ls") => TmanAction::List,
-                Some("a") | Some("list-all") | Some("la") => TmanAction::ListAll,
-                Some("r") | Some("rename") | Some("rn") => TmanAction::Rename,
-                Some("f") | Some("find") | Some("search") => TmanAction::Find,
-                Some("v") | Some("visual") | Some("telescope") => TmanAction::Visual,
-                Some("interactive") | Some("") | None => TmanAction::Interactive,
-                Some(other) => anyhow::bail!(
-                    "Acción de tman desconocida: '{}'. Usa: list, list-all, rename, find, visual",
-                    other
-                ),
+            return match cmd {
+                Command::Dialy => Ok(ValidatedArgs::Daily {
+                    editor: resolve_editor(self.editor_flag, self.editor_cmd)?,
+                    skip_timestamp: self.no_id,
+                }),
+                Command::Last { count } => Ok(ValidatedArgs::Last {
+                    count: count.unwrap_or(1),
+                    editor: resolve_editor(self.editor_flag, self.editor_cmd)?,
+                    skip_timestamp: self.no_id,
+                }),
+                Command::Tag { action } => {
+                    let action = parse_tag_action(action.as_deref())?;
+                    Ok(ValidatedArgs::Tman(action))
+                }
+                Command::Retag {
+                    target,
+                    no_bak,
+                    no_alias,
+                } => Ok(ValidatedArgs::Retag {
+                    target,
+                    no_backup: no_bak,
+                    no_alias,
+                }),
+                Command::Redir { target, no_bak } => Ok(ValidatedArgs::Redir {
+                    target,
+                    no_backup: no_bak,
+                }),
+                Command::Cache { kind } => Ok(ValidatedArgs::Cache {
+                    kind: parse_cache_kind(kind.as_deref())?,
+                }),
+                Command::Tasks { force_check_everywhere } => Ok(ValidatedArgs::Tasks {
+                    mark_all: force_check_everywhere,
+                }),
+                Command::Alias { name, command } => Ok(ValidatedArgs::Alias { name, command }),
             };
-
-            return Ok(ValidatedArgs::Tman(action));
         }
 
-        // Validar que daily, last, last_note y título sean mutuamente excluyentes
-        let has_last = self.last_flag || self.last_num.is_some();
-        let has_title = self.name.is_some() || self.title.is_some();
-
-        let mode_count = [self.daily, has_last, has_title, self.last_note]
-            .iter()
-            .filter(|&&x| x)
-            .count();
-
-        if mode_count > 1 {
-            anyhow::bail!("No se pueden combinar -d, -l/--last, --last-note, y título de nota");
-        }
-
-        // Procesar editor
-        let editor = if self.editor_flag && self.editor_cmd.is_some() {
-            anyhow::bail!("No se pueden usar -e y --editor al mismo tiempo");
-        } else if self.editor_flag {
-            EditorMode::UseConfig
-        } else if let Some(cmd) = self.editor_cmd {
-            EditorMode::Custom(cmd)
-        } else {
-            EditorMode::Default
-        };
-
-        // Determinar el modo de operación
+        // Create note (no command)
+        let editor = resolve_editor(self.editor_flag, self.editor_cmd)?;
         let skip_timestamp = self.no_id;
 
-        if self.daily {
-            Ok(ValidatedArgs::Daily {
-                editor,
-                skip_timestamp,
-            })
-        } else if let Some(count) = self.last_num {
-            Ok(ValidatedArgs::Last {
-                count,
-                editor,
-                skip_timestamp,
-            })
-        } else if self.last_flag {
-            Ok(ValidatedArgs::Last {
-                count: 5,
-                editor,
-                skip_timestamp,
-            })
-        } else if self.last_note {
-            Ok(ValidatedArgs::LastNote {
-                editor,
-                skip_timestamp,
-            })
-        } else {
-            // Título: prioridad a -n/--name, luego posicional
-            let title = self.name.or(self.title);
-            // target_dir: directorio destino para crear nota con tag auto-derivado
-            let target_dir = self.target_dir.map(PathBuf::from);
-            Ok(ValidatedArgs::Create {
-                title,
-                target_dir,
-                editor,
-                skip_timestamp,
-            })
+        let title_flag = self.title.is_some();
+        let title = self.title.or(self.title_pos);
+        let target_dir = self.target_dir.map(PathBuf::from);
+
+        // Alias expansion (only if no --title and single-word title)
+        if !title_flag {
+            if let Some(ref word) = title {
+                if !word.contains(char::is_whitespace) {
+                    let aliases = crate::utils::alias::load_aliases().unwrap_or_default();
+                    if let Some(cmdline) = aliases.get(word) {
+                        let mut args = crate::utils::alias::split_command_line(cmdline)?;
+                        if args.first().map(|s| s.as_str()) == Some("mad") {
+                            args.remove(0);
+                        }
+                        args.insert(0, "mad".to_string());
+                        let expanded = Args::parse_from(args);
+                        return expanded.validate_inner(depth + 1);
+                    }
+                }
+            }
         }
+
+        if title.is_none() {
+            anyhow::bail!("Falta título o comando. Usa: mad <comando> -h");
+        }
+
+        // Enforce: single-word titles require --title
+        if !title_flag {
+            if let Some(ref t) = title {
+                if !t.contains(char::is_whitespace) {
+                    anyhow::bail!("Para títulos de una sola palabra usa --title");
+                }
+            }
+        }
+
+        Ok(ValidatedArgs::Create {
+            title,
+            target_dir,
+            editor,
+            skip_timestamp,
+        })
     }
 }
+
+fn resolve_editor(editor_flag: bool, editor_cmd: Option<String>) -> anyhow::Result<EditorMode> {
+    let editor = if editor_flag && editor_cmd.is_some() {
+        anyhow::bail!("No se pueden usar -e y --editor al mismo tiempo");
+    } else if editor_flag {
+        EditorMode::UseConfig
+    } else if let Some(cmd) = editor_cmd {
+        EditorMode::Custom(cmd)
+    } else {
+        EditorMode::Default
+    };
+    Ok(editor)
+}
+
+fn parse_tag_action(raw: Option<&str>) -> anyhow::Result<TmanAction> {
+    match raw.unwrap_or("list") {
+        "list" | "ls" => Ok(TmanAction::List),
+        "rename" | "rn" => Ok(TmanAction::Rename),
+        "find" | "search" => Ok(TmanAction::Find),
+        "log" | "visual" | "telescope" => Ok(TmanAction::Log),
+        other => anyhow::bail!(
+            "Acción de tag desconocida: '{}'. Usa: list, rename, find, log",
+            other
+        ),
+    }
+}
+
+fn parse_cache_kind(raw: Option<&str>) -> anyhow::Result<CacheKind> {
+    match raw.unwrap_or("all") {
+        "all" => Ok(CacheKind::All),
+        "dir-tags" | "dir" | "dirs" => Ok(CacheKind::DirTags),
+        // Backwards-compatible aliases
+        "path-tags" | "path" | "paths" | "primary" => Ok(CacheKind::DirTags),
+        other => anyhow::bail!("Tipo de cache desconocido: '{}'. Usa: all, dir-tags", other),
+    }
+}
+
 
 #[derive(Debug)]
 pub enum EditorMode {
@@ -295,10 +297,6 @@ pub enum ValidatedArgs {
         editor: EditorMode,
         skip_timestamp: bool,
     },
-    LastNote {
-        editor: EditorMode,
-        skip_timestamp: bool,
-    },
     Tman(TmanAction),
     Retag {
         target: String,
@@ -314,9 +312,14 @@ pub enum ValidatedArgs {
         editor: EditorMode,
         skip_timestamp: bool,
     },
-    Migrate,
-    Rename {
-        new_name: String,
-        no_retag: bool,
+    Cache {
+        kind: CacheKind,
+    },
+    Tasks {
+        mark_all: bool,
+    },
+    Alias {
+        name: String,
+        command: String,
     },
 }
