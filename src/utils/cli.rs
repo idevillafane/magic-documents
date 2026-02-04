@@ -322,4 +322,8 @@ pub enum ValidatedArgs {
         name: String,
         command: String,
     },
+    Rename {
+        new_name: String,
+        no_retag: bool,
+    },
 }
